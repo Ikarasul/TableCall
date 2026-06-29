@@ -39,13 +39,17 @@ class RestaurantTable(models.Model):
         default=True,
         verbose_name='เปิดใช้งาน'
     )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='ลำดับจัดเรียง'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'โต๊ะอาหาร'
         verbose_name_plural = 'โต๊ะอาหารทั้งหมด'
-        ordering = ['number']
+        ordering = ['sort_order', 'number']
 
     def __str__(self):
         return f'Table {self.number} ({self.seats} seats)'

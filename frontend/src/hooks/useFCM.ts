@@ -25,7 +25,7 @@ export default function useFCM() {
           console.log('[FCM] Device Token:', deviceToken)
 
           // ส่งไปให้ Backend
-          await api.post('/staff/device-token/', {
+          await api.post('/v1/staff/device-token/', {
             fcm_token: deviceToken
           })
           

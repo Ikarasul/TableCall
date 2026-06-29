@@ -80,6 +80,7 @@ export const endpoints = {
   tableByToken:       (token: string) => `/v1/tables/${token}/`,
   adminTables:        '/v1/tables/admin/',
   adminTableDetail:   (id: number) => `/v1/tables/admin/${id}/`,
+  adminReorderTables: '/v1/tables/admin/reorder/',
 
   // Notifications
   notifications:      '/v1/notifications/',

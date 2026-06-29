@@ -56,7 +56,7 @@ def table_list(request):
     
     Response: list of TableSerializer
     """
-    tables = RestaurantTable.objects.filter(is_active=True).prefetch_related('notifications')
+    tables = RestaurantTable.objects.filter(is_active=True).prefetch_related('notifications').order_by('sort_order', 'number')
     serializer = TableSerializer(tables, many=True)
     return Response(serializer.data)
 
@@ -135,11 +135,17 @@ def table_notify(request, qr_token: str):
     kind = serializer.validated_data['kind']
     qr_token_str = str(qr_token)
 
-    # ตรวจสอบ throttle ใน Redis
+    # ตรวจสอบ throttle ใน Redis — ใช้ cache.add() เพื่อ atomic set-if-not-exists
     throttle_key = _throttle_key(qr_token_str, kind)
-    if cache.get(throttle_key):
+    # cache.add() คืน True ถ้า key ยังไม่มี (set สำเร็จ), False ถ้ามีแล้ว
+    throttle_set = cache.add(throttle_key, True, timeout=settings.NOTIFY_THROTTLE_SECONDS)
+
+    if not throttle_set:
         # ยังอยู่ใน cooldown window
         ttl_remaining = cache.ttl(throttle_key)
+        # cache.ttl() อาจคืน None (backend ไม่รองรับ) หรือค่าติดลบ ให้ fallback ที่ค่า default
+        if ttl_remaining is None or ttl_remaining < 0:
+            ttl_remaining = settings.NOTIFY_THROTTLE_SECONDS
         kind_display = 'เรียกพนักงาน' if kind == 'call' else 'เรียกเก็บเงิน'
         logger.info(
             f'Table {table.number} throttled for kind={kind}. '
@@ -165,13 +171,16 @@ def table_notify(request, qr_token: str):
         f'table={table.number}, kind={kind}'
     )
 
-    # Set throttle key ใน Redis (TTL = 30 วินาที)
-    cache.set(throttle_key, True, timeout=settings.NOTIFY_THROTTLE_SECONDS)
-
     # Broadcast notification ไปยัง staff ผ่าน Channel Layer
     _broadcast_notification_created(notification)
 
     notification_data = NotificationSerializer(notification).data
+    # เพิ่ม cooldown_until เพื่อให้ frontend แสดง countdown
+    cooldown_seconds = settings.NOTIFY_THROTTLE_SECONDS
+    from datetime import datetime
+    cooldown_until = datetime.fromisoformat(notification.created_at.isoformat()).timestamp() + cooldown_seconds
+    notification_data['cooldown_until'] = notification.created_at.isoformat()
+    notification_data['cooldown_seconds'] = cooldown_seconds
     return Response(notification_data, status=status.HTTP_201_CREATED)
 
 
@@ -229,7 +238,7 @@ def admin_list_create_tables(request):
     POST: สร้างโต๊ะใหม่
     """
     if request.method == 'GET':
-        tables = RestaurantTable.objects.all().order_by('number')
+        tables = RestaurantTable.objects.all().order_by('sort_order', 'number')
         serializer = AdminTableSerializer(tables, many=True)
         return Response(serializer.data)
         
@@ -293,7 +302,7 @@ def submit_feedback(request, qr_token: str):
 @api_view(['GET'])
 @permission_classes([IsAdminStaff])
 @authentication_classes([QueryParamJWTAuthentication, JWTAuthentication])
-def export_feedback_csv(request):
+def export_feedback_xlsx(request):
     """
     Admin ดาวน์โหลดข้อมูลเป็นไฟล์ Excel (XLSX)
     - ถ้าส่ง staff_id: ดาวน์โหลดประวัติการรับเรื่องของพนักงานนั้น (Staff Performance)
@@ -362,3 +371,22 @@ def export_feedback_csv(request):
     wb.save(response)
     
     return response
+
+@api_view(['POST'])
+@permission_classes([IsAdminStaff])
+def admin_reorder_tables(request):
+    """
+    Admin รีออเดอร์โต๊ะ
+    Request body: [{'id': 1, 'sort_order': 0}, {'id': 2, 'sort_order': 1}]
+    """
+    data = request.data
+    if not isinstance(data, list):
+        return Response({'detail': 'Invalid data format, expected a list'}, status=400)
+    
+    # Simple bulk update
+    from .models import RestaurantTable
+    for item in data:
+        if 'id' in item and 'sort_order' in item:
+            RestaurantTable.objects.filter(id=item['id']).update(sort_order=item['sort_order'])
+            
+    return Response({'detail': 'Reordered successfully'})

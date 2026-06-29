@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, endpoints } from '@/lib/api'
@@ -182,10 +182,12 @@ function ShiftLogRow({ log }: { log: any }) {
   )
 }
 
-// ── Today's date helper ────────────────────────────────────
+// ── Today's date helper (Asia/Bangkok timezone) ────────────
 function todayISO() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const now = new Date()
+  // คำนวณเวลา Asia/Bangkok (UTC+7) โดยไม่พึ่ง timezone เครื่อง client
+  const bangkokTime = new Date(now.getTime() + (now.getTimezoneOffset() + 420) * 60000)
+  return `${bangkokTime.getFullYear()}-${String(bangkokTime.getMonth() + 1).padStart(2, '0')}-${String(bangkokTime.getDate()).padStart(2, '0')}`
 }
 
 // ── Main page ──────────────────────────────────────────────
@@ -210,25 +212,31 @@ export default function NotificationList() {
 
   // ── Handle mutation ─────────────────────────────────────
   const [handlingIds, setHandlingIds] = useState<Set<number>>(new Set())
+  const handlingRefs = useRef<Set<number>>(new Set())
 
   const mutation = useMutation<void, Error, number>({
     mutationFn: (id) => apiPost(endpoints.notificationHandle(id)),
     onMutate: (id) => {
+      handlingRefs.current.add(id)
       setHandlingIds((prev) => new Set([...prev, id]))
     },
     onSuccess: (_, id) => {
       handleNotification(id)
+      handlingRefs.current.delete(id)
       setHandlingIds((prev) => { const s = new Set(prev); s.delete(id); return s })
       toast.toastSuccess('รับเรื่องเรียบร้อย')
       queryClient.invalidateQueries({ queryKey: ['tables'] })
     },
     onError: (_, id) => {
+      handlingRefs.current.delete(id)
       setHandlingIds((prev) => { const s = new Set(prev); s.delete(id); return s })
       toast.toastError('เกิดข้อผิดพลาด', 'ไม่สามารถรับเรื่องได้')
     },
   })
 
   const handleAction = useCallback((id: number) => {
+    if (handlingRefs.current.has(id)) return
+    handlingRefs.current.add(id)
     mutation.mutate(id)
   }, [mutation])
 

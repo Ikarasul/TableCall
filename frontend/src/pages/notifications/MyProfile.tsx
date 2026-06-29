@@ -13,12 +13,12 @@ import clsx from 'clsx'
 // ── Confirm logout dialog ──────────────────────────────────
 function LogoutDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="glass-card border border-red-500/30 bg-[#1a1a1a] rounded-3xl p-6 w-full max-w-sm animate-scale-in">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div className="glass-card border border-red-500/30 bg-zinc-900 rounded-3xl p-6 w-full max-w-sm animate-scale-in shadow-2xl">
         <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🚪</div>
-          <h3 className="font-kanit font-bold text-xl text-gray-900">ออกงานวันนี้?</h3>
-          <p className="font-sarabun text-gray-600 text-sm mt-2 leading-relaxed">
+          <div className="text-5xl mb-3 drop-shadow-md">🚪</div>
+          <h3 className="font-kanit font-bold text-xl text-gray-50">ออกงานวันนี้?</h3>
+          <p className="font-sarabun text-gray-400 text-sm mt-2 leading-relaxed">
             ระบบจะบันทึกเวลาออกงาน
             <br />และออกจากระบบ
           </p>
@@ -28,14 +28,14 @@ function LogoutDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel
           <button
             type="button"
             onClick={onConfirm}
-            className="btn-red py-4 text-lg w-full"
+            className="btn-red py-4 text-lg w-full font-kanit font-semibold shadow-lg shadow-red-500/20"
           >
             ✓ ยืนยัน ออกงาน
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="btn-ghost py-4 text-lg w-full"
+            className="py-4 text-lg w-full font-kanit font-semibold text-gray-400 bg-zinc-800 rounded-2xl hover:bg-zinc-700 transition-colors"
           >
             ยังอยู่ต่อ
           </button>
@@ -166,9 +166,9 @@ export default function MyProfile() {
             </div>
 
             <h2 className="font-kanit font-bold text-2xl text-gray-900">{staff?.name ?? '—'}</h2>
-            <p className="font-sarabun text-gray-600 text-sm mt-1 capitalize">
-              {staff?.role === 'manager' ? 'ผู้จัดการ' : staff?.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
-            </p>
+                <p className="font-sarabun text-gray-600 text-sm mt-1 capitalize">
+                  {staff?.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
+                </p>
 
             {/* Shift timer */}
             <div className="mt-4 inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-full px-4 py-2">
@@ -193,7 +193,7 @@ export default function MyProfile() {
           <StatCard
             icon="✅"
             label="รับเรื่องแล้ว (กะนี้)"
-            value={stats?.total_handled_shift ?? shiftLog?.total_handled ?? 0}
+            value={stats?.handled_count ?? 0}
             color="text-emerald-400"
           />
           <StatCard
@@ -205,7 +205,7 @@ export default function MyProfile() {
           <StatCard
             icon="📊"
             label="รับเรื่องทั้งหมดวันนี้"
-            value={stats?.total_handled_today ?? 0}
+            value={0}
             color="text-blue-400"
           />
         </div>

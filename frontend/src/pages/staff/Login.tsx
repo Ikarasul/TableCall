@@ -24,7 +24,7 @@ export default function Login() {
       return apiPost<any>(endpoints.staffLogin, { code, password })
     },
     onSuccess: (data) => {
-      loginAction(data.access_token, data.staff)
+      loginAction(data.access_token, data.staff, data.shift_log)
       navigate('/staff/dashboard', { replace: true })
     },
     onError: (error: any) => {

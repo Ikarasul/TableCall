@@ -35,12 +35,8 @@ export default function FloorView({ tables, loading = false }: FloorViewProps) {
     return { ...table, status, pending_count: pending.length }
   })
 
-  // Sort: calling → bill → idle, then by table_number
-  const sorted = [...enrichedTables].sort((a, b) => {
-    const orderDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-    if (orderDiff !== 0) return orderDiff
-    return a.table_number.localeCompare(b.table_number, 'th', { numeric: true })
-  })
+  // Keep the original order from backend (which uses sort_order)
+  const sorted = enrichedTables
 
   const handleTableClick = (table: RestaurantTable) => {
     navigate('/staff/notifications', { state: { filterTableId: table.id } })

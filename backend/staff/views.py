@@ -109,8 +109,14 @@ def staff_login(request):
     # ตรวจสอบ Password
     if not staff.verify_password(password):
         # Password ผิด → เพิ่ม counter
-        current_attempts = cache.get(attempts_key, 0) + 1
-        
+        # ใช้ cache.add() ตั้ง TTL ครั้งเดียวตอน first attempt
+        # และ cache.incr() เพิ่ม counter โดยไม่รีเซ็ต TTL (ป้องกัน reset ทุกครั้ง)
+        first_attempt = cache.add(attempts_key, 1, timeout=600)
+        if first_attempt:
+            current_attempts = 1
+        else:
+            current_attempts = cache.incr(attempts_key)
+
         if current_attempts >= settings.PIN_MAX_ATTEMPTS:
             cache.set(lock_key, True, timeout=settings.PIN_LOCK_DURATION)
             cache.delete(attempts_key)
@@ -126,7 +132,6 @@ def staff_login(request):
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         else:
-            cache.set(attempts_key, current_attempts, timeout=600)
             remaining_attempts = settings.PIN_MAX_ATTEMPTS - current_attempts
             logger.info(f'Staff {staff_id} wrong Password. Attempts: {current_attempts}/{settings.PIN_MAX_ATTEMPTS}')
             return Response(
@@ -235,6 +240,16 @@ def admin_detail_staff(request, staff_id):
         
     elif request.method == 'DELETE':
         # แทนที่จะลบข้อมูล เราปิดการใช้งาน
+        # ป้องกัน: ไม่ให้ระงับ admin จนไม่เหลือ admin ที่ active เลย
+        if staff.role == 'admin' and staff.is_active:
+            active_admin_count = Staff.objects.filter(
+                role='admin', is_active=True
+            ).count()
+            if active_admin_count <= 1:
+                return Response(
+                    {'detail': 'ไม่สามารถระงับ admin คนสุดท้ายได้'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         staff.is_active = False
         staff.save()
         return Response(status=status.HTTP_204_NO_CONTENT)

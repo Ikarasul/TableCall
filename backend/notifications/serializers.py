@@ -31,6 +31,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = [
             'id',
+            'kind',
             'table_id',
             'table_number',
             'table_seats',
@@ -45,7 +46,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'response_time_seconds',
         ]
         read_only_fields = [
-            'id', 'created_at', 'handled_at',
+            'id', 'kind', 'created_at', 'handled_at',
             'table_id', 'table_number', 'table_seats',
             'type', 'kind_display', 'status_display',
             'handled_by_name', 'response_time_seconds',

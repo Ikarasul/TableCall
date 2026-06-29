@@ -67,7 +67,8 @@ class WsClient {
 
   send(event: WsEventType, data?: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ event, data, timestamp: new Date().toISOString() }))
+      // ใช้ 'type' เพื่อให้ตรงกับที่ backend consumer อ่าน
+      this.ws.send(JSON.stringify({ type: event, data, timestamp: new Date().toISOString() }))
     }
   }
 
@@ -107,8 +108,8 @@ class WsClient {
     this.ws.onmessage = (event: MessageEvent) => {
       try {
         const msg = JSON.parse(event.data as string) as WsMessage
-        // Handle pong silently
-        if (msg.event === 'pong') return
+        // Handle pong silently — server ส่งกลับด้วย key 'type'
+        if ((msg as any).type === 'pong') return
         this.messageHandlers.forEach((h) => h(msg))
       } catch {
         console.warn('[WS] Failed to parse message:', event.data)

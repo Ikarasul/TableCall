@@ -35,6 +35,9 @@ class QueryParamJWTAuthentication(BaseAuthentication):
                 def __init__(self, p):
                     self.payload = p
 
+                def __repr__(self):
+                    return f'<TokenAuth staff_id={self.payload.get("staff_id")}>'
+
             # สร้าง mock user ที่ DRF ยอมรับ
             staff_id = payload.get('staff_id')
             if not staff_id:
@@ -54,4 +57,4 @@ class QueryParamJWTAuthentication(BaseAuthentication):
             raise
         except Exception as e:
             logger.error(f'QueryParamJWT unexpected error: {e}')
-            return None
+            raise AuthenticationFailed('การตรวจสอบ token ล้มเหลว')

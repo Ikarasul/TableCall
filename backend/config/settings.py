@@ -198,7 +198,7 @@ SIMPLE_JWT = {
     # Refresh token อายุ 7 วัน
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
@@ -211,8 +211,17 @@ SIMPLE_JWT = {
 # ---------------------------------------------------------------------------
 # CORS settings — อนุญาต Frontend origins
 # ---------------------------------------------------------------------------
-# อนุญาตทุก origin สำหรับ dev (ngrok URL เปลี่ยนทุกครั้งที่ restart)
-CORS_ALLOW_ALL_ORIGINS = True
+if DEBUG:
+    # Dev mode: อนุญาตทุก origin (ngrok URL เปลี่ยนทุกครั้งที่ restart)
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # Production: ระบุ origin ที่อนุญาตเฉพาะเจาะจง
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = config(
+        'CORS_ALLOWED_ORIGINS',
+        default='http://localhost:5173,http://localhost:3000',
+        cast=Csv(),
+    )
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',

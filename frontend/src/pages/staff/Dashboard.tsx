@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
+import { wsClient, type WsStatus } from '@/lib/ws-client'
 import { apiGet, endpoints } from '@/lib/api'
-import { wsClient } from '@/lib/ws-client'
-import type { WsStatus } from '@/lib/ws-client'
+
 import { useToast } from '@/components/ui/Toast'
 import FloorView from '@/components/floor-view/FloorView'
 import BottomNav from '@/components/staff/BottomNav'
@@ -52,61 +52,7 @@ export default function Dashboard() {
     }
   }, [pendingNotifications, setPendingNotifications])
 
-  // ── WebSocket ─────────────────────────────────────────
-  const handleWsMessage = useCallback((msg: any) => {
-    const type = msg.type || msg.event
-    switch (type) {
-      case 'notification.created': {
-        const { notification } = msg.data as WsNotificationCreatedData
-        addNotification(notification)
-        toast.toastNotification(notification.type, notification.table_number, notification.table_label)
-        // Invalidate tables to refresh status
-        queryClient.invalidateQueries({ queryKey: ['tables'] })
-        break
-      }
-      case 'notification.handled': {
-        const data = msg.data as any
-        const notification = data.notification
-        const staffName = data.staff_name
-        handleNotification(notification.id)
-        queryClient.invalidateQueries({ queryKey: ['tables'] })
-        queryClient.invalidateQueries({ queryKey: ['staff-stats'] })
-        toast.toastSuccess(`รับเรื่องโต๊ะ ${notification.table_number || notification.table?.number} แล้ว`, `รับโดย ${staffName}`)
-        break
-      }
-      case 'notification.cancelled': {
-        const data = msg.data as { notification_id: number }
-        handleNotification(data.notification_id)
-        queryClient.invalidateQueries({ queryKey: ['tables'] })
-        break
-      }
-      case 'table.status_changed': {
-        queryClient.invalidateQueries({ queryKey: ['tables'] })
-        break
-      }
-      case 'staff.logged_in': {
-        const data = msg.data as any
-        if (staff?.role === 'admin') {
-          // Add a simple string toast for admin
-          toast.toastInfo(
-            `พนักงานเข้าสู่ระบบ`,
-            `✅ พนักงาน ${data.staff_name} ได้เข้าสู่ระบบแล้ว`
-          )
-        }
-        break
-      }
-    }
-  }, [addNotification, handleNotification, queryClient, toast, staff])
 
-  useEffect(() => {
-    if (!token) return
-    wsClient.connect(token)
-    const unsub = wsClient.onMessage(handleWsMessage)
-    return () => {
-      unsub()
-      wsClient.disconnect()
-    }
-  }, [token, handleWsMessage])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">

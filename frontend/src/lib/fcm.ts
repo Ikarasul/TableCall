@@ -52,7 +52,7 @@ export async function registerFCMToken(authToken: string): Promise<void> {
 
     // ส่ง token ไปบันทึกที่ backend
     const { default: api } = await import('./api');
-    await api.post('/staff/device-token/', { fcm_token: token });
+    await api.post('/v1/staff/device-token/', { fcm_token: token });
     console.log('[FCM] Token registered:', token.substring(0, 20) + '...');
   } catch (err) {
     console.error('[FCM] Failed to register token:', err);

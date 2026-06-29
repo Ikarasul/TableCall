@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { App as CapacitorApp } from '@capacitor/app'
 import ProtectedRoute from '@/components/ui/ProtectedRoute'
 
 // Staff pages
@@ -16,6 +18,42 @@ import NotificationList from '@/pages/notifications/NotificationList'
 import MyProfile        from '@/pages/notifications/MyProfile'
 
 export default function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const handleBackButton = async (event: any) => {
+      // ถ้ายืนอยู่หน้า Dashboard หรือ Login ให้ปิดแอปปกติ (หรือทำตาม default)
+      if (location.pathname === '/staff/dashboard' || location.pathname === '/staff/login') {
+        if (!event.canGoBack) {
+          CapacitorApp.exitApp()
+        } else {
+          window.history.back()
+        }
+        return
+      }
+      
+      // ถ้าอยู่หน้าอื่นของ Staff ให้กลับไป Dashboard
+      if (location.pathname.startsWith('/staff/')) {
+        navigate('/staff/dashboard', { replace: true })
+        return
+      }
+
+      // ถ้าเป็นหน้าอื่นๆ (เช่นลูกค้า) ให้ย้อนกลับธรรมดา
+      if (event.canGoBack) {
+        window.history.back()
+      } else {
+        CapacitorApp.exitApp()
+      }
+    }
+
+    const listener = CapacitorApp.addListener('backButton', handleBackButton)
+
+    return () => {
+      listener.then(l => l.remove())
+    }
+  }, [location.pathname, navigate])
+
   return (
     <Routes>
       {/* Root redirect */}

@@ -173,6 +173,8 @@ export default function ManageStaff() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                lang="th"
+                inputMode="text"
                 className="bg-black/30 border border-gray-200 rounded-xl px-4 py-3 font-sarabun text-gray-900 outline-none focus:border-amber-500/50"
               />
             </div>

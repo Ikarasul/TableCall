@@ -39,13 +39,13 @@ class StaffAdmin(admin.ModelAdmin):
         return fields
 
     def save_model(self, request, obj, form, change):
-        """Hash PIN ใหม่ถ้ามีการระบุ"""
+        """Hash password ใหม่ถ้ามีการระบุ"""
         new_pin = form.data.get('new_pin', '').strip()
         if new_pin:
-            obj.set_pin(new_pin)
+            obj.set_password(new_pin)
         elif not change:
-            # กำหนด PIN default สำหรับพนักงานใหม่
-            obj.set_pin('1234')
+            # กำหนด password default สำหรับพนักงานใหม่
+            obj.set_password('1234')
         super().save_model(request, obj, form, change)
 
     def get_form(self, request, obj=None, **kwargs):

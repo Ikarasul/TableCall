@@ -1,11 +1,46 @@
+// Global AudioContext singleton
+let globalAudioCtx: AudioContext | null = null
+
+// Initialize or resume AudioContext on user interaction
+const unlockAudio = () => {
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+  if (!AudioContextClass) return
+
+  if (!globalAudioCtx) {
+    globalAudioCtx = new AudioContextClass()
+  }
+
+  if (globalAudioCtx.state === 'suspended') {
+    globalAudioCtx.resume()
+  }
+}
+
+// Attach to common user interactions to unlock audio
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', unlockAudio, { once: true })
+  window.addEventListener('touchstart', unlockAudio, { once: true })
+  window.addEventListener('keydown', unlockAudio, { once: true })
+}
+
 export const playNotificationSound = () => {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioContextClass) return
-    const ctx = new AudioContextClass()
+    // 1. Try to vibrate on mobile
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200])
+    }
+
+    // 2. Play Web Audio API sound
+    if (!globalAudioCtx) {
+      unlockAudio()
+    }
+    
+    const ctx = globalAudioCtx
+    if (!ctx) return
+
     if (ctx.state === 'suspended') {
       ctx.resume()
     }
+
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     

@@ -119,6 +119,10 @@ class Notification(models.Model):
         blank=True,
         verbose_name='เวลาที่จัดการ'
     )
+    reminded_count = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name='จำนวนครั้งที่ส่ง reminder'
+    )
 
     # Custom manager
     objects = NotificationManager()

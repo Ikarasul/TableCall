@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import useFCM from '@/hooks/useFCM'
+import useGlobalWebSocket from '@/hooks/useGlobalWebSocket'
 import type { ReactNode } from 'react'
 
 interface ProtectedRouteProps {
@@ -13,6 +14,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Initialize FCM for logged-in staff
   useFCM()
+  // Initialize Global WebSocket
+  useGlobalWebSocket()
 
   if (!isAuthenticated) {
     return (

@@ -11,7 +11,7 @@ export interface Staff {
   emoji?: string
   avatar_emoji?: string
   phone?: string
-  role: 'staff' | 'manager' | 'admin'
+  role: 'staff' | 'admin'
   is_active: boolean
   created_at: string
 }
@@ -22,7 +22,7 @@ export interface StaffProfile extends Staff {
 
 export interface LoginResponse {
   access_token: string
-  token_type: string
+  refresh_token: string
   staff: Staff
   shift_log: ShiftLog
 }
@@ -31,11 +31,12 @@ export interface LoginResponse {
 
 export interface ShiftLog {
   id: number
-  staff_id: number
-  clock_in: string        // ISO date-time
+  staff: number            // staff id (primary key)
+  staff_name?: string
+  clock_in: string         // ISO date-time
   clock_out?: string | null
-  duration_seconds?: number | null
-  total_handled: number
+  duration_minutes?: number | null
+  is_active_shift?: boolean
 }
 
 // ── Restaurant Tables ──────────────────────────────────────

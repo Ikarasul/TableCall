@@ -27,7 +27,10 @@ urlpatterns = [
     path('admin/<int:table_id>/', views.admin_detail_table, name='admin-detail-table'),
 
     # GET /api/tables/admin/feedback/export/
-    path('admin/feedback/export/', views.export_feedback_csv, name='admin-export-feedback'),
+    path('admin/feedback/export/', views.export_feedback_xlsx, name='admin-export-feedback'),
+    
+    # POST /api/tables/admin/reorder/
+    path('admin/reorder/', views.admin_reorder_tables, name='admin-reorder-tables'),
     
     # POST /api/tables/<qr_token>/feedback/
     path('<uuid:qr_token>/feedback/', views.submit_feedback, name='submit-feedback'),

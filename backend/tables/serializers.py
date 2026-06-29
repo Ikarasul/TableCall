@@ -5,6 +5,7 @@ Serializers สำหรับ Tables app
 """
 
 from rest_framework import serializers
+from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import RestaurantTable
 
 
@@ -27,6 +28,7 @@ class TableSerializer(serializers.ModelSerializer):
             'qr_token',
             'is_active',
             'status',
+            'sort_order',
             'pending_count',
             'created_at',
             'updated_at',
@@ -87,6 +89,7 @@ class AdminTableSerializer(serializers.ModelSerializer):
             'seats',
             'qr_token',
             'is_active',
+            'sort_order',
             'created_at',
             'updated_at',
         ]
@@ -95,6 +98,12 @@ class AdminTableSerializer(serializers.ModelSerializer):
 from .models import CustomerFeedback
 
 class CustomerFeedbackSerializer(serializers.ModelSerializer):
+    rating = serializers.IntegerField(
+        min_value=1,
+        max_value=5,
+        help_text='คะแนนความพึงพอใจ 1-5 ดาว'
+    )
+
     class Meta:
         model = CustomerFeedback
         fields = ['rating', 'suggestions']

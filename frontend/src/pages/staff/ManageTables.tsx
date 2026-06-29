@@ -1,16 +1,38 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  rectSortingStrategy
+} from '@dnd-kit/sortable'
 import { apiGet, apiPost, apiPatch, apiDelete, endpoints } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import type { RestaurantTable } from '@/types'
+import { SortableTableItem } from './SortableTableItem'
 import clsx from 'clsx'
+import { Capacitor } from '@capacitor/core'
+import { Share } from '@capacitor/share'
 
-// ── Today ISO helper ───────────────────────────────────────
+// ── Today ISO helper (Asia/Bangkok timezone) ───────────────
 function todayISO() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  // ใช้ timezone ของร้าน (Asia/Bangkok) เพื่อให้ตรงกับ backend
+  const now = new Date()
+  // คำนวณเวลา Asia/Bangkok (UTC+7) โดยไม่พึ่ง timezone เครื่อง client
+  const bangkokTime = new Date(now.getTime() + (now.getTimezoneOffset() + 420) * 60000)
+  return `${bangkokTime.getFullYear()}-${String(bangkokTime.getMonth() + 1).padStart(2, '0')}-${String(bangkokTime.getDate()).padStart(2, '0')}`
 }
 
 // ── Shift log row component ────────────────────────────────
@@ -91,10 +113,18 @@ export default function ManageTables() {
   }
 
   // ── Tables data ────────────────────────────────────────
-  const { data: tables = [], isLoading } = useQuery<RestaurantTable[]>({
+  const { data: serverTables = [], isLoading } = useQuery<RestaurantTable[]>({
     queryKey: ['admin-tables-list'],
     queryFn: () => apiGet(endpoints.adminTables),
   })
+  
+  // Local state for drag-and-drop
+  const [tables, setTables] = useState<RestaurantTable[]>([])
+  
+  // Sync when data from server changes
+  useEffect(() => {
+    setTables(serverTables)
+  }, [serverTables])
 
   const [isAdding, setIsAdding] = useState(false)
   const [editingTable, setEditingTable] = useState<RestaurantTable | null>(null)
@@ -138,6 +168,42 @@ export default function ManageTables() {
     mutationFn: (id: number) => apiDelete(endpoints.adminTableDetail(id)),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-tables-list'] }); queryClient.invalidateQueries({ queryKey: ['tables'] }) }
   })
+  
+  const reorderMutation = useMutation({
+    mutationFn: (payload: { id: number, sort_order: number }[]) => apiPost(endpoints.adminReorderTables, payload),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-tables-list'] }); queryClient.invalidateQueries({ queryKey: ['tables'] }) }
+  })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setTables((items) => {
+        const oldIndex = items.findIndex((t) => t.id.toString() === active.id)
+        const newIndex = items.findIndex((t) => t.id.toString() === over.id)
+        const newArray = arrayMove(items, oldIndex, newIndex)
+        
+        // Save new order to backend
+        const payload = newArray.map((table, index) => ({
+          id: table.id,
+          sort_order: index
+        }))
+        reorderMutation.mutate(payload)
+        
+        return newArray
+      })
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,10 +235,25 @@ export default function ManageTables() {
       ctx.textAlign = 'center'
       ctx.fillText(`โต๊ะ ${tableNumber}`, canvas.width / 2, canvas.height - 20)
       const pngFile = canvas.toDataURL('image/png')
-      const downloadLink = document.createElement('a')
-      downloadLink.download = `QR_Table_${tableNumber}.png`
-      downloadLink.href = pngFile
-      downloadLink.click()
+      
+      if (Capacitor.isNativePlatform()) {
+        // Native app: Share to save image
+        Share.share({
+          title: `QR โต๊ะ ${tableNumber}`,
+          text: `QR Code โต๊ะ ${tableNumber}`,
+          url: pngFile,
+          dialogTitle: 'บันทึกรูปภาพ QR Code'
+        }).catch(err => {
+          console.error('Error sharing', err)
+          alert('เกิดข้อผิดพลาดในการโหลดรูปภาพ')
+        })
+      } else {
+        // Web browser
+        const downloadLink = document.createElement('a')
+        downloadLink.download = `QR_Table_${tableNumber}.png`
+        downloadLink.href = pngFile
+        downloadLink.click()
+      }
     }
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
   }
@@ -312,57 +393,32 @@ export default function ManageTables() {
                 เพิ่มโต๊ะใหม่
               </button>
 
-              <div className="grid grid-cols-2 gap-3">
-                {tables.map(table => (
-                  <div
-                    key={table.id}
-                    className={clsx('glass-card p-4 rounded-2xl flex flex-col gap-3 transition-all', !table.is_active && 'opacity-50 grayscale')}
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <SortableContext 
+                    items={tables.map(t => t.id.toString())}
+                    strategy={rectSortingStrategy}
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-kanit font-bold text-2xl text-gray-900 leading-none">
-                          {table.number || table.table_number}
-                        </h3>
-                        <p className="font-sarabun text-xs text-gray-500 mt-1">{table.seats} ที่นั่ง</p>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleEditClick(table)}
-                          className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        {table.is_active && (
-                          <button
-                            onClick={() => {
-                              if (confirm(`ต้องการลบโต๊ะ ${table.number || table.table_number} หรือไม่?`)) {
-                                deleteMutation.mutate(table.id)
-                              }
-                            }}
-                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setShowQR(table)}
-                      className="w-full py-2 bg-gray-200 rounded-xl text-gray-700 font-sarabun text-sm flex items-center justify-center gap-1.5 hover:bg-zinc-700 transition-colors mt-auto"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                      </svg>
-                      คิวอาร์โค้ด
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    {tables.map(table => (
+                      <SortableTableItem 
+                        key={table.id}
+                        table={table}
+                        onEdit={handleEditClick}
+                        onDelete={(id, num) => {
+                          if (confirm(`ต้องการลบโต๊ะ ${num} หรือไม่?`)) {
+                            deleteMutation.mutate(id)
+                          }
+                        }}
+                        onShowQR={setShowQR}
+                      />
+                    ))}
+                  </SortableContext>
+                </div>
+              </DndContext>
 
               {tables.length === 0 && (
                 <div className="text-center py-10 font-sarabun text-gray-500">ยังไม่มีข้อมูลโต๊ะ</div>

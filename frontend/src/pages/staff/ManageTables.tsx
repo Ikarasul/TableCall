@@ -25,6 +25,7 @@ import { SortableTableItem } from './SortableTableItem'
 import clsx from 'clsx'
 import { Capacitor } from '@capacitor/core'
 import { Share } from '@capacitor/share'
+import { Media } from '@capacitor-community/media'
 
 // ── Today ISO helper (Asia/Bangkok timezone) ───────────────
 function todayISO() {
@@ -237,15 +238,15 @@ export default function ManageTables() {
       const pngFile = canvas.toDataURL('image/png')
       
       if (Capacitor.isNativePlatform()) {
-        // Native app: Share to save image
-        Share.share({
-          title: `QR โต๊ะ ${tableNumber}`,
-          text: `QR Code โต๊ะ ${tableNumber}`,
-          url: pngFile,
-          dialogTitle: 'บันทึกรูปภาพ QR Code'
+        // Native app: Save directly to gallery
+        Media.savePhoto({
+          path: pngFile,
+          fileName: `QR_Table_${tableNumber}`
+        }).then(() => {
+          alert('บันทึกรูปภาพ QR Code ลงในเครื่องสำเร็จ')
         }).catch(err => {
-          console.error('Error sharing', err)
-          alert('เกิดข้อผิดพลาดในการโหลดรูปภาพ')
+          console.error('Error saving photo', err)
+          alert('เกิดข้อผิดพลาดในการบันทึกรูปภาพ อนุญาตการเข้าถึงรูปภาพแล้วหรือยัง?')
         })
       } else {
         // Web browser

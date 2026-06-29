@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    @apply bg-gray-50 text-gray-900;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Kanit', sans-serif;
+  }
+
+  button {
+    font-family: 'Kanit', sans-serif;
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Premium button */
+  .btn-amber {
+    @apply bg-amber-500 hover:bg-amber-400 active:bg-amber-600
+           text-black font-kanit font-semibold
+           rounded-2xl transition-all duration-200
+           active:scale-95 shadow-glow-amber;
+  }
+
+  .btn-green {
+    @apply bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600
+           text-white font-kanit font-semibold
+           rounded-2xl transition-all duration-200
+           active:scale-95 shadow-glow-green;
+  }
+
+  .btn-red {
+    @apply bg-red-500 hover:bg-red-400 active:bg-red-600
+           text-white font-kanit font-semibold
+           rounded-2xl transition-all duration-200
+           active:scale-95 shadow-glow-red;
+  }
+
+  .btn-ghost {
+    @apply bg-black/5 hover:bg-black/10 active:bg-black/15
+           text-gray-600 hover:text-gray-900 font-kanit
+           rounded-2xl transition-all duration-200
+           active:scale-95;
+  }
+
+  /* Pulse rings for table cards */
+  .ring-pulse-amber {
+    @apply animate-pulse-amber;
+  }
+
+  .ring-pulse-green {
+    @apply animate-pulse-green;
+  }
+}
+
+@layer utilities {
+  .font-kanit {
+    font-family: 'Kanit', sans-serif;
+  }
+  .font-sarabun {
+    font-family: 'Sarabun', sans-serif;
+  }
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

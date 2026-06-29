@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TableCall Staff</string>
+    <string name="title_activity_main">TableCall Staff</string>
+    <string name="package_name">com.tablecall.staff</string>
+    <string name="custom_url_scheme">com.tablecall.staff</string>
+</resources>

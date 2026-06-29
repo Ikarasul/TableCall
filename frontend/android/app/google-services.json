@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "462693907415",
+    "project_id": "tablecall-75279",
+    "storage_bucket": "tablecall-75279.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462693907415:android:b66ddadf8eeaa09f006992",
+        "android_client_info": {
+          "package_name": "com.tablecall.staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_MA1EjvbgNZ4CdpdKnsBc7jNOW6ZwkMo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

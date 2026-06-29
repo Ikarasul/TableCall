@@ -1,0 +1,53 @@
+# Environments
+# Environments
+.env
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.venv
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Secrets
+backend/service-account.json
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Android
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/.idea/
+
+# Web / Build
+frontend/dist/
+frontend/build/
+.cache/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

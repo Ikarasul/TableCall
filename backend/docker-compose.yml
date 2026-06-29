@@ -1,0 +1,86 @@
+# =====================================================
+# docker-compose.yml สำหรับ TableCall Backend
+# รัน: docker-compose up --build
+# =====================================================
+
+version: '3.9'
+
+services:
+  # MySQL 8 Database
+  db:
+    image: mysql:8.0
+    container_name: tablecall_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: tablecall
+      MYSQL_USER: tablecall_user
+      MYSQL_PASSWORD: tablecall_pass
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+
+  # Redis — Channel Layers + Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tablecall_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Django + Daphne Backend
+  backend:
+    build: .
+    container_name: tablecall_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: your-super-secret-key-change-in-production
+      DEBUG: "False"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
+      DB_NAME: tablecall
+      DB_USER: tablecall_user
+      DB_PASSWORD: tablecall_pass
+      DB_HOST: db
+      DB_PORT: "3306"
+      REDIS_URL: redis://redis:6379
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      PIN_MAX_ATTEMPTS: "5"
+      PIN_LOCK_DURATION: "300"
+      NOTIFY_THROTTLE_SECONDS: "30"
+      NOTIFICATION_RETENTION_DAYS: "90"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+
+volumes:
+  mysql_data:
+  redis_data:
+  static_files:
+  media_files:

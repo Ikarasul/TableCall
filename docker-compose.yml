@@ -1,0 +1,124 @@
+services:
+  # ============================================================
+  # Backend — Django (ASGI via Daphne รองรับ WebSocket)
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - tablecall_net
+    ports:
+      - "8000:8000"
+
+  # ============================================================
+  # Backend Background Worker — Reminders Loop
+  # ============================================================
+  reminders:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    command: python manage.py run_reminders
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - tablecall_net
+
+  # ============================================================
+  # Frontend — React (Vite build, served by Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - tablecall_net
+    ports:
+      - "3000:80"
+
+  # ============================================================
+  # Database — MySQL 8
+  # ============================================================
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - tablecall_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "3306:3306"
+
+  # ============================================================
+  # Cache & Channel Layer — Redis
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - tablecall_net
+    ports:
+      - "6379:6379"
+
+  # ============================================================
+  # Reverse Proxy — Nginx
+  # ============================================================
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/staticfiles:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - tablecall_net
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  redis_data:
+  static_volume:
+
+networks:
+  tablecall_net:
+    driver: bridge
